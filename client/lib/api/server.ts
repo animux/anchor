@@ -187,6 +187,59 @@ async function runRpc(name: string, args: Record<string, unknown> = {}) {
       return { data: [result], error: null }
     }
 
+    if (name === "list_student_interventions_paginated") {
+      const query = new URLSearchParams({
+        limit: String(args.p_limit ?? 8),
+        offset: String(args.p_offset ?? 0),
+        search: String(args.p_search ?? ""),
+        issue_category: String(args.p_issue_category ?? "all"),
+        outcome: String(args.p_outcome ?? "all"),
+      })
+
+      const result = await backendRequest<{
+        rows: Array<Record<string, unknown>>
+        totalCount: number
+      }>(`/api/interventions?${query.toString()}`, { token })
+
+      const rows = result.rows.map((row) => ({
+        ...row,
+        total_count: result.totalCount,
+      }))
+
+      return { data: rows, error: null }
+    }
+
+    if (name === "search_students_for_intervention") {
+      const query = new URLSearchParams({
+        limit: String(args.p_limit ?? 30),
+        search: String(args.p_search ?? ""),
+      })
+
+      const result = await backendRequest<{
+        rows: Array<Record<string, unknown>>
+      }>(`/api/interventions/students?${query.toString()}`, { token })
+
+      return { data: result.rows, error: null }
+    }
+
+    if (name === "create_student_intervention") {
+      await backendRequest("/api/interventions", {
+        method: "POST",
+        token,
+        body: {
+          student_id: args.p_student_id,
+          interaction_type: args.p_interaction_type,
+          outcome: args.p_outcome,
+          issue_category: args.p_issue_category,
+          notes: args.p_notes,
+          action_item: args.p_action_item,
+          next_planned_contact: args.p_next_planned_contact,
+        },
+      })
+
+      return { data: [], error: null }
+    }
+
     return {
       data: null,
       error: { message: `Unsupported RPC: ${name}` },

@@ -24,6 +24,18 @@ export function getRagFromCompletion(
   return "red"
 }
 
+export function getRatedCountAfterStatusChange(
+  currentRated: number,
+  currentStatus: ModuleStatus,
+  nextStatus: ModuleStatus
+) {
+  const delta =
+    (nextStatus === "yes" || nextStatus === "no" ? 1 : 0) -
+    (currentStatus === "yes" || currentStatus === "no" ? 1 : 0)
+
+  return Math.max(0, currentRated + delta)
+}
+
 export function getCompletedCountAfterStatusChange(
   currentCompleted: number,
   currentStatus: ModuleStatus,

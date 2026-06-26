@@ -35,6 +35,7 @@ import {
   getCompletedCountAfterStatusChange,
   getRagFromCompletion,
   getRagLabel,
+  getRatedCountAfterStatusChange,
 } from "@/lib/submissions/operations"
 import {
   moduleStatuses,
@@ -228,6 +229,7 @@ export function SubmissionsDashboard({
           overall_rag: row.overall_rag,
           module_statuses: parseModuleStatuses(row.module_statuses),
           completed_modules: row.completed_modules,
+          rated_modules: row.rated_modules,
           total_modules: row.total_modules,
         }))
       )
@@ -389,10 +391,12 @@ export function SubmissionsDashboard({
       currentStatus,
       nextStatus
     )
-    const fallbackRag = getRagFromCompletion(
-      completedModules,
-      student.total_modules
+    const ratedModules = getRatedCountAfterStatusChange(
+      student.rated_modules,
+      currentStatus,
+      nextStatus
     )
+    const fallbackRag = getRagFromCompletion(completedModules, ratedModules)
 
     setStudents((current) =>
       current.map((row) => {
@@ -405,6 +409,7 @@ export function SubmissionsDashboard({
             [moduleKey]: nextStatus,
           },
           completed_modules: completedModules,
+          rated_modules: ratedModules,
           overall_rag: result?.overall_rag ?? fallbackRag,
         }
       })
@@ -545,7 +550,7 @@ export function SubmissionsDashboard({
                   </TableHead>
                 ))}
                 <TableHead className="text-xs tracking-[0.12em] text-muted-foreground uppercase dark:text-zinc-300">
-                  Overall
+                  Overall RAG
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -634,7 +639,7 @@ export function SubmissionsDashboard({
                           {getRagLabel(student.overall_rag)}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
-                          {student.completed_modules}/{student.total_modules}
+                          {student.completed_modules}/{student.rated_modules}
                         </span>
                       </div>
                     </TableCell>

@@ -1,7 +1,7 @@
 import { Router } from "express";
-import mongoose from "mongoose";
 
 import { requireAuth } from "../middleware/auth.js";
+import { Module } from "../models/Module.js";
 import { Student } from "../models/Student.js";
 
 const router = Router();
@@ -28,6 +28,24 @@ function serializeStudent(student) {
       ? new Date(student.assignment_started_at).toISOString()
       : null,
     previous_assigned_sst: student.previous_assigned_sst,
+    module_submissions: (student.module_submissions ?? []).map(
+      (submission) => ({
+        module_id: submission.module_id,
+        module_name: submission.module_name,
+        module_owner: submission.module_owner?.toString?.() ?? null,
+        status: submission.status,
+        marked_by: submission.marked_by?.toString?.() ?? null,
+        marked_at: submission.marked_at
+          ? new Date(submission.marked_at).toISOString()
+          : null,
+        created_at: submission.created_at
+          ? new Date(submission.created_at).toISOString()
+          : null,
+        updated_at: submission.updated_at
+          ? new Date(submission.updated_at).toISOString()
+          : null,
+      }),
+    ),
     status: student.status,
     completed_at: student.completed_at
       ? new Date(student.completed_at).toISOString()
@@ -146,6 +164,21 @@ router.post("/upsert", async (req, res) => {
   }
 
   const created = await Student.create({
+    module_submissions: (
+      await Module.find({ owner: req.user._id }).select(
+        "_id module_id module_name owner",
+      )
+    ).map((module) => ({
+      module: module._id,
+      module_id: module.module_id,
+      module_name: module.module_name,
+      module_owner: module.owner,
+      status: "not_set",
+      marked_by: null,
+      marked_at: null,
+      created_at: now,
+      updated_at: now,
+    })),
     student_id: normalizedStudentId,
     full_name: full_name ?? null,
     phone: phone ?? null,

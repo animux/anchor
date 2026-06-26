@@ -3,7 +3,6 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import { Module } from "../models/Module.js";
 import { Student } from "../models/Student.js";
-import { Submission } from "../models/Submission.js";
 import { getRagFromCompletion } from "../utils/rag.js";
 
 const router = Router();
@@ -23,6 +22,10 @@ function normalizeStatus(value) {
 
 function matchRag(expected, rag) {
   return expected === "all" || expected === rag;
+}
+
+function isRagCountedStatus(status) {
+  return status === "yes" || status === "no";
 }
 
 router.get("/modules", async (req, res) => {
@@ -64,20 +67,28 @@ router.post("/modules", async (req, res) => {
     wasCreated = true;
   }
 
-  const students = await Student.find(accessibleStudentFilter(req.user)).select(
-    "_id",
-  );
-  const operations = students.map((student) => ({
-    updateOne: {
-      filter: { student: student._id, module: module._id },
-      update: { $setOnInsert: { status: "not_set" } },
-      upsert: true,
+  const now = new Date();
+  await Student.updateMany(
+    {
+      ...accessibleStudentFilter(req.user),
+      module_submissions: { $not: { $elemMatch: { module: module._id } } },
     },
-  }));
-
-  if (operations.length > 0) {
-    await Submission.bulkWrite(operations);
-  }
+    {
+      $push: {
+        module_submissions: {
+          module: module._id,
+          module_id: module.module_id,
+          module_name: module.module_name,
+          module_owner: module.owner,
+          status: "not_set",
+          marked_by: null,
+          marked_at: null,
+          created_at: now,
+          updated_at: now,
+        },
+      },
+    },
+  );
 
   return res.json({ module_name: module.module_name, was_created: wasCreated });
 });
@@ -97,7 +108,14 @@ router.delete("/modules/:moduleId", async (req, res) => {
     return res.status(404).json({ message: "Module not found" });
   }
 
-  await Submission.deleteMany({ module: module._id });
+  await Student.updateMany(
+    {},
+    {
+      $pull: {
+        module_submissions: { module: module._id },
+      },
+    },
+  );
   await module.deleteOne();
 
   return res.status(204).send();
@@ -119,39 +137,30 @@ async function buildSubmissionRows({
   const searchable = search.trim().toLowerCase();
   const groupValue = group.trim();
 
-  const byId = new Map(
-    students.map((student) => [student._id.toString(), student]),
+  const moduleIdsByObjectId = new Map(
+    modules.map((module) => [module._id.toString(), String(module.module_id)]),
   );
-  const submissions = await Submission.find({
-    student: { $in: students.map((student) => student._id) },
-    module: { $in: modules.map((module) => module._id) },
-  }).lean();
-
-  const submissionsByStudent = new Map();
-  for (const record of submissions) {
-    const studentKey = record.student.toString();
-    const moduleDoc = modules.find(
-      (mod) => mod._id.toString() === record.module.toString(),
-    );
-    if (!moduleDoc) continue;
-
-    if (!submissionsByStudent.has(studentKey)) {
-      submissionsByStudent.set(studentKey, {});
-    }
-
-    submissionsByStudent.get(studentKey)[String(moduleDoc.module_id)] =
-      normalizeStatus(record.status);
-  }
 
   const rows = [];
   for (const student of students) {
-    const studentKey = student._id.toString();
-    const statuses = submissionsByStudent.get(studentKey) ?? {};
+    const statuses = {};
+    for (const submission of student.module_submissions ?? []) {
+      const moduleObjectId = submission.module?.toString?.();
+      if (!moduleObjectId) continue;
+
+      const moduleIdKey = moduleIdsByObjectId.get(moduleObjectId);
+      if (!moduleIdKey) continue;
+
+      statuses[moduleIdKey] = normalizeStatus(submission.status);
+    }
     const totalModules = modules.length;
     const completedModules = Object.values(statuses).filter(
       (status) => status === "yes",
     ).length;
-    const overallRag = getRagFromCompletion(completedModules, totalModules);
+    const ratedModules = Object.values(statuses).filter((status) =>
+      isRagCountedStatus(status),
+    ).length;
+    const overallRag = getRagFromCompletion(completedModules, ratedModules);
 
     if (searchable) {
       const haystack =
@@ -180,6 +189,7 @@ async function buildSubmissionRows({
       overall_rag: overallRag,
       module_statuses: statuses,
       completed_modules: completedModules,
+      rated_modules: ratedModules,
       total_modules: totalModules,
     });
   }
@@ -268,25 +278,63 @@ router.put("/students/:studentId/modules/:moduleId", async (req, res) => {
     return res.status(404).json({ message: "Module not found" });
   }
 
-  await Submission.findOneAndUpdate(
-    { student: student._id, module: module._id },
-    { $set: { status } },
-    { upsert: true, new: true },
+  const now = new Date();
+  const currentSubmissions = Array.isArray(student.module_submissions)
+    ? [...student.module_submissions]
+    : [];
+  const existingIndex = currentSubmissions.findIndex(
+    (submission) => submission.module?.toString?.() === module._id.toString(),
   );
 
-  const moduleIds = (
-    await Module.find({ owner: req.user._id }).select("_id module_id").lean()
-  ).map((doc) => doc._id);
+  if (existingIndex >= 0) {
+    currentSubmissions[existingIndex] = {
+      ...currentSubmissions[existingIndex],
+      module: module._id,
+      module_id: module.module_id,
+      module_name: module.module_name,
+      module_owner: module.owner,
+      status,
+      marked_by: status === "not_set" ? null : req.user._id,
+      marked_at: status === "not_set" ? null : now,
+      updated_at: now,
+    };
+  } else {
+    currentSubmissions.push({
+      module: module._id,
+      module_id: module.module_id,
+      module_name: module.module_name,
+      module_owner: module.owner,
+      status,
+      marked_by: status === "not_set" ? null : req.user._id,
+      marked_at: status === "not_set" ? null : now,
+      created_at: now,
+      updated_at: now,
+    });
+  }
 
-  const studentSubmissions = await Submission.find({
-    student: student._id,
-    module: { $in: moduleIds },
-  }).lean();
+  student.module_submissions = currentSubmissions;
+  await student.save();
 
-  const completedModules = studentSubmissions.filter(
-    (row) => row.status === "yes",
+  const userModules = await Module.find({ owner: req.user._id })
+    .select("_id")
+    .lean();
+  const userModuleObjectIds = new Set(
+    userModules.map((moduleDoc) => moduleDoc._id.toString()),
+  );
+
+  const completedModules = currentSubmissions.filter(
+    (submission) =>
+      userModuleObjectIds.has(submission.module?.toString?.()) &&
+      normalizeStatus(submission.status) === "yes",
   ).length;
-  const overallRag = getRagFromCompletion(completedModules, moduleIds.length);
+  const ratedModules = currentSubmissions.filter((submission) => {
+    if (!userModuleObjectIds.has(submission.module?.toString?.())) {
+      return false;
+    }
+
+    return isRagCountedStatus(normalizeStatus(submission.status));
+  }).length;
+  const overallRag = getRagFromCompletion(completedModules, ratedModules);
 
   return res.json({ overall_rag: overallRag });
 });

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   getCompletedCountAfterStatusChange,
   getRagFromCompletion,
+  getRatedCountAfterStatusChange,
 } from "@/lib/submissions/operations"
 
 describe("getRagFromCompletion", () => {
@@ -35,5 +36,19 @@ describe("getCompletedCountAfterStatusChange", () => {
 
   it("keeps count unchanged when yes-state does not change", () => {
     expect(getCompletedCountAfterStatusChange(2, "no", "extension")).toBe(2)
+  })
+})
+
+describe("getRatedCountAfterStatusChange", () => {
+  it("increments when a module changes from not counted to no", () => {
+    expect(getRatedCountAfterStatusChange(1, "not_set", "no")).toBe(2)
+  })
+
+  it("decrements when a module changes from counted to extension", () => {
+    expect(getRatedCountAfterStatusChange(2, "yes", "extension")).toBe(1)
+  })
+
+  it("keeps count unchanged when moving between yes and no", () => {
+    expect(getRatedCountAfterStatusChange(2, "yes", "no")).toBe(2)
   })
 })

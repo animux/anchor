@@ -75,6 +75,7 @@ export default async function SubmissionsPage() {
     overall_rag: row.overall_rag,
     module_statuses: parseModuleStatuses(row.module_statuses),
     completed_modules: row.completed_modules,
+    rated_modules: row.rated_modules,
     total_modules: row.total_modules,
   }))
 

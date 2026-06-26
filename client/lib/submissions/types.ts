@@ -21,6 +21,7 @@ export type SubmissionStudentRpcRow = {
   overall_rag: RagStatus
   module_statuses: Record<string, ModuleStatus>
   completed_modules: number
+  rated_modules: number
   total_modules: number
   total_count: number
 }

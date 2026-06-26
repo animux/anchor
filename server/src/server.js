@@ -6,6 +6,7 @@ import morgan from "morgan";
 import { connectDatabase } from "./config/db.js";
 import { env } from "./config/env.js";
 import authRoutes from "./routes/auth.js";
+import interventionsRoutes from "./routes/interventions.js";
 import studentsRoutes from "./routes/students.js";
 import submissionsRoutes from "./routes/submissions.js";
 
@@ -26,6 +27,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/interventions", interventionsRoutes);
 app.use("/api/students", studentsRoutes);
 app.use("/api/submissions", submissionsRoutes);
 

@@ -11,6 +11,37 @@ const previousAssignedSstSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const moduleSubmissionSchema = new mongoose.Schema(
+  {
+    module: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Module",
+      required: true,
+    },
+    module_id: { type: Number, required: true },
+    module_name: { type: String, required: true },
+    module_owner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ["yes", "no", "extension", "not_set"],
+      default: "not_set",
+    },
+    marked_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    marked_at: { type: Date, default: null },
+    created_at: { type: Date, default: Date.now },
+    updated_at: { type: Date, default: Date.now },
+  },
+  { _id: false },
+);
+
 const studentSchema = new mongoose.Schema(
   {
     id: { type: Number, unique: true, index: true },
@@ -31,6 +62,7 @@ const studentSchema = new mongoose.Schema(
     },
     assignment_started_at: { type: Date, default: Date.now },
     previous_assigned_sst: { type: [previousAssignedSstSchema], default: [] },
+    module_submissions: { type: [moduleSubmissionSchema], default: [] },
     status: {
       type: String,
       enum: ["active", "completed"],
