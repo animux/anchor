@@ -1,4 +1,4 @@
-import { backendRequest } from "@/lib/api/backend"
+import { BackendRequestError, backendRequest } from "@/lib/api/backend"
 import {
   clearSessionData,
   getSessionData,
@@ -18,6 +18,13 @@ type RpcResponse<T> = {
 }
 
 function mapError(error: unknown): { message: string; code?: string } {
+  if (error instanceof BackendRequestError && error.status === 401) {
+    return {
+      message: "Session expired. Please sign in again.",
+      code: "UNAUTHORIZED",
+    }
+  }
+
   return {
     message: error instanceof Error ? error.message : "Unexpected error",
   }
@@ -245,6 +252,10 @@ async function runRpc(name: string, args: Record<string, unknown> = {}) {
       error: { message: `Unsupported RPC: ${name}` },
     }
   } catch (error) {
+    if (error instanceof BackendRequestError && error.status === 401) {
+      await clearSessionData()
+    }
+
     return {
       data: null,
       error: mapError(error),

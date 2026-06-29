@@ -9,6 +9,18 @@ type BackendRequestInit = {
   token?: string | null
 }
 
+export class BackendRequestError extends Error {
+  status?: number
+  code?: string
+
+  constructor(message: string, status?: number, code?: string) {
+    super(message)
+    this.name = "BackendRequestError"
+    this.status = status
+    this.code = code
+  }
+}
+
 export async function backendRequest<T>(
   path: string,
   options: BackendRequestInit = {}
@@ -27,11 +39,13 @@ export async function backendRequest<T>(
     return response.data
   } catch (error) {
     if (error instanceof AxiosError) {
-      const message =
-        (error.response?.data as { message?: string } | undefined)?.message ??
-        error.message
+      const status = error.response?.status
+      const responseBody = error.response?.data as
+        | { message?: string; code?: string }
+        | undefined
+      const message = responseBody?.message ?? error.message
 
-      throw new Error(message)
+      throw new BackendRequestError(message, status, responseBody?.code)
     }
 
     throw error

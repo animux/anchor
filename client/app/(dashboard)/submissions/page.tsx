@@ -29,8 +29,16 @@ function parseModuleStatuses(input: unknown) {
   return result
 }
 
-export default async function SubmissionsPage() {
+type SubmissionsPageProps = {
+  searchParams?: Promise<{ student_id?: string }>
+}
+
+export default async function SubmissionsPage({
+  searchParams,
+}: SubmissionsPageProps) {
   const apiClient = await createClient()
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+  const studentSearch = resolvedSearchParams?.student_id?.trim() ?? ""
 
   const [
     { data: modulesData },
@@ -44,7 +52,7 @@ export default async function SubmissionsPage() {
       {
         p_limit: 20,
         p_offset: 0,
-        p_search: null,
+        p_search: studentSearch || null,
         p_group: null,
         p_rag: "all",
       }
@@ -52,7 +60,7 @@ export default async function SubmissionsPage() {
     apiClient.rpc<SubmissionSummary[]>(
       "get_submission_rag_summary_for_current_user",
       {
-        p_search: null,
+        p_search: studentSearch || null,
         p_group: null,
         p_rag: "all",
       }
@@ -101,6 +109,7 @@ export default async function SubmissionsPage() {
       initialTotalCount={studentRows[0]?.total_count ?? 0}
       initialSummary={initialSummary}
       initialGroups={initialGroups}
+      initialSearch={studentSearch}
     />
   )
 }

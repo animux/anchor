@@ -29,8 +29,22 @@ function Message({ state }: { state: AuthActionState }) {
   )
 }
 
-export function LoginForm() {
+type LoginFormProps = {
+  showSessionExpiredMessage?: boolean
+}
+
+export function LoginForm({
+  showSessionExpiredMessage = false,
+}: LoginFormProps) {
   const [state, formAction] = useActionState(loginAction, initialAuthState)
+
+  useEffect(() => {
+    if (!showSessionExpiredMessage) {
+      return
+    }
+
+    toast.error("Session expired. Please sign in again.")
+  }, [showSessionExpiredMessage])
 
   useEffect(() => {
     if (!state.feedbackId) {

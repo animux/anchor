@@ -1,5 +1,7 @@
 "use client"
 
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   CalendarDaysIcon,
@@ -40,12 +42,14 @@ import {
   createInterventionSchema,
   type CreateInterventionInput,
 } from "@/lib/validations/student-records"
+import { getStudentProfilePath } from "@/lib/students/profile-path"
 
 type StudentRecordsDashboardProps = {
   currentUserId: string | null
   initialInterventions: StudentIntervention[]
   initialTotalCount: number
   initialStudentOptions: InterventionStudentOption[]
+  initialSearch?: string
 }
 
 type InterventionFilters = {
@@ -125,13 +129,15 @@ export function StudentRecordsDashboard({
   initialInterventions,
   initialTotalCount,
   initialStudentOptions,
+  initialSearch = "",
 }: StudentRecordsDashboardProps) {
+  const router = useRouter()
   const apiClient = useMemo(() => createClient(), [])
 
   const [interventions, setInterventions] =
     useState<StudentIntervention[]>(initialInterventions)
   const [totalCount, setTotalCount] = useState(initialTotalCount)
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState(initialSearch)
   const [issueCategoryFilter, setIssueCategoryFilter] =
     useState<InterventionFilters["issueCategory"]>("all")
   const [outcomeFilter, setOutcomeFilter] =
@@ -382,6 +388,18 @@ export function StudentRecordsDashboard({
     await fetchInterventions(1, activeFilters)
   }
 
+  function openStudentProfile(
+    event: React.MouseEvent<HTMLLIElement> | React.KeyboardEvent<HTMLLIElement>,
+    studentId: string
+  ) {
+    const target = event.target as HTMLElement
+    if (target.closest("a,button,input,select,textarea,[role='button']")) {
+      return
+    }
+
+    router.push(getStudentProfilePath(studentId))
+  }
+
   return (
     <div className="px-4 py-5 sm:px-7 sm:py-6">
       <div className="rounded-3xl border border-border/70 bg-background p-6 shadow-sm">
@@ -475,7 +493,21 @@ export function StudentRecordsDashboard({
           ) : (
             <ul className="divide-y divide-border/70">
               {interventions.map((record) => (
-                <li key={record.id} className="p-5">
+                <li
+                  key={record.id}
+                  role="button"
+                  tabIndex={0}
+                  className="cursor-pointer p-5 transition-colors hover:bg-muted/20"
+                  onClick={(event) =>
+                    openStudentProfile(event, record.student_id)
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault()
+                      openStudentProfile(event, record.student_id)
+                    }
+                  }}
+                >
                   <div className="flex gap-4">
                     <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/70 bg-muted text-xs font-medium text-muted-foreground">
                       {getInitials(record.student_name, record.student_id)}
@@ -484,11 +516,19 @@ export function StudentRecordsDashboard({
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <p className="font-semibold text-foreground">
+                          <Link
+                            href={getStudentProfilePath(record.student_id)}
+                            className="font-semibold text-foreground underline-offset-4 hover:underline"
+                          >
                             {record.student_name ?? "Unknown student"}
-                          </p>
+                          </Link>
                           <p className="text-xs text-muted-foreground">
-                            {record.student_id}
+                            <Link
+                              href={getStudentProfilePath(record.student_id)}
+                              className="underline-offset-4 hover:underline"
+                            >
+                              {record.student_id}
+                            </Link>
                           </p>
                         </div>
                         <p className="text-sm font-medium text-muted-foreground">

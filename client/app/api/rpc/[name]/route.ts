@@ -16,5 +16,7 @@ export async function POST(
   const client = await createClient()
   const result = await client.rpc(name, body.args ?? {})
 
-  return NextResponse.json(result)
+  const status = result.error?.code === "UNAUTHORIZED" ? 401 : 200
+
+  return NextResponse.json(result, { status })
 }

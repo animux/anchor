@@ -3,11 +3,18 @@ import { redirect } from "next/navigation"
 import { LoginForm } from "@/components/auth/login-form"
 import { createClient } from "@/lib/api/server"
 
-export default async function LoginPage() {
+type LoginPageProps = {
+  searchParams?: Promise<{ reason?: string }>
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
   const apiClient = await createClient()
   const {
     data: { user },
   } = await apiClient.auth.getUser()
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+  const showSessionExpiredMessage =
+    resolvedSearchParams?.reason === "session_expired"
 
   if (user) {
     redirect("/")
@@ -21,7 +28,7 @@ export default async function LoginPage() {
           Sign in to access your dashboard.
         </p>
       </div>
-      <LoginForm />
+      <LoginForm showSessionExpiredMessage={showSessionExpiredMessage} />
     </div>
   )
 }

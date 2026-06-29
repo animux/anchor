@@ -1,5 +1,7 @@
 "use client"
 
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useCallback, useMemo, useState } from "react"
 import {
   ArrowUpIcon,
@@ -53,6 +55,7 @@ import {
   summarizeCompleteStudents,
   toStudentUpsertPayload,
 } from "@/lib/students/operations"
+import { getStudentProfilePath } from "@/lib/students/profile-path"
 import type {
   CompleteStudentsRpcRow,
   StudentRecord,
@@ -110,6 +113,7 @@ export function StudentsDashboard({
   initialTotalCount,
   initialGroups,
 }: StudentsDashboardProps) {
+  const router = useRouter()
   const roleLabel = getAuthRoleLabel(role)
   const apiClient = useMemo(() => createClient(), [])
 
@@ -302,6 +306,20 @@ export function StudentsDashboard({
       }
       return next
     })
+  }
+
+  function openStudentProfile(
+    event:
+      | React.MouseEvent<HTMLTableRowElement>
+      | React.KeyboardEvent<HTMLTableRowElement>,
+    studentId: string
+  ) {
+    const target = event.target as HTMLElement
+    if (target.closest("a,button,input,select,textarea,[role='button']")) {
+      return
+    }
+
+    router.push(getStudentProfilePath(studentId))
   }
 
   async function upsertStudent(input: StudentInput) {
@@ -733,7 +751,21 @@ export function StudentsDashboard({
                 </TableRow>
               ) : (
                 students.map((student) => (
-                  <TableRow key={student.id}>
+                  <TableRow
+                    key={student.id}
+                    role="button"
+                    tabIndex={0}
+                    className="cursor-pointer transition-colors hover:bg-muted/25"
+                    onClick={(event) =>
+                      openStudentProfile(event, student.student_id)
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault()
+                        openStudentProfile(event, student.student_id)
+                      }
+                    }}
+                  >
                     <TableCell>
                       <input
                         type="checkbox"
@@ -745,9 +777,21 @@ export function StudentsDashboard({
                       />
                     </TableCell>
                     <TableCell className="font-medium">
-                      {student.student_id}
+                      <Link
+                        href={getStudentProfilePath(student.student_id)}
+                        className="underline-offset-4 hover:underline"
+                      >
+                        {student.student_id}
+                      </Link>
                     </TableCell>
-                    <TableCell>{student.full_name ?? "-"}</TableCell>
+                    <TableCell>
+                      <Link
+                        href={getStudentProfilePath(student.student_id)}
+                        className="font-medium text-foreground underline-offset-4 hover:underline"
+                      >
+                        {student.full_name ?? "-"}
+                      </Link>
+                    </TableCell>
                     <TableCell>
                       <div className="space-y-0.5 text-xs leading-relaxed">
                         <div>{student.school_email ?? "-"}</div>

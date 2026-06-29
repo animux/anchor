@@ -1,5 +1,7 @@
 "use client"
 
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useCallback, useMemo, useState } from "react"
 import {
   ChevronLeftIcon,
@@ -46,6 +48,7 @@ import {
   type SubmissionSummary,
 } from "@/lib/submissions/types"
 import { createClient } from "@/lib/api/client"
+import { getStudentProfilePath } from "@/lib/students/profile-path"
 
 type SubmissionsDashboardProps = {
   initialModules: SubmissionModule[]
@@ -53,6 +56,7 @@ type SubmissionsDashboardProps = {
   initialTotalCount: number
   initialSummary: SubmissionSummary
   initialGroups: string[]
+  initialSearch?: string
 }
 
 type SubmissionsFilters = {
@@ -120,7 +124,9 @@ export function SubmissionsDashboard({
   initialTotalCount,
   initialSummary,
   initialGroups,
+  initialSearch = "",
 }: SubmissionsDashboardProps) {
+  const router = useRouter()
   const apiClient = useMemo(() => createClient(), [])
 
   const [modules, setModules] = useState(initialModules)
@@ -129,7 +135,7 @@ export function SubmissionsDashboard({
   const [summary, setSummary] = useState(initialSummary)
   const [availableGroups] = useState(initialGroups)
 
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState(initialSearch)
   const [groupFilter, setGroupFilter] = useState("")
   const [ragFilter, setRagFilter] = useState<SubmissionsFilters["rag"]>("all")
 
@@ -443,6 +449,20 @@ export function SubmissionsDashboard({
 
   const tableColSpan = Math.max(6, modules.length + 3)
 
+  function openStudentProfile(
+    event:
+      | React.MouseEvent<HTMLTableRowElement>
+      | React.KeyboardEvent<HTMLTableRowElement>,
+    studentId: string
+  ) {
+    const target = event.target as HTMLElement
+    if (target.closest("a,button,input,select,textarea,[role='button']")) {
+      return
+    }
+
+    router.push(getStudentProfilePath(studentId))
+  }
+
   return (
     <>
       <div className="px-4 py-5 sm:px-7 sm:py-6">
@@ -590,13 +610,34 @@ export function SubmissionsDashboard({
                 students.map((student) => (
                   <TableRow
                     key={student.id}
-                    className="dark:hover:bg-zinc-900/55"
+                    role="button"
+                    tabIndex={0}
+                    className="cursor-pointer dark:hover:bg-zinc-900/55"
+                    onClick={(event) =>
+                      openStudentProfile(event, student.student_id)
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault()
+                        openStudentProfile(event, student.student_id)
+                      }
+                    }}
                   >
                     <TableCell className="font-semibold tracking-tight text-foreground dark:text-zinc-100">
-                      {student.student_id}
+                      <Link
+                        href={getStudentProfilePath(student.student_id)}
+                        className="underline-offset-4 hover:underline"
+                      >
+                        {student.student_id}
+                      </Link>
                     </TableCell>
                     <TableCell className="text-foreground dark:text-zinc-200">
-                      {student.full_name ?? "-"}
+                      <Link
+                        href={getStudentProfilePath(student.student_id)}
+                        className="font-medium underline-offset-4 hover:underline"
+                      >
+                        {student.full_name ?? "-"}
+                      </Link>
                     </TableCell>
                     {modules.map((module) => {
                       const moduleKey = String(module.module_id)

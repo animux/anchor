@@ -6,8 +6,16 @@ import type {
   StudentInterventionWithTotal,
 } from "@/lib/student-records/types"
 
-export default async function StudentRecordsPage() {
+type StudentRecordsPageProps = {
+  searchParams?: Promise<{ student_id?: string }>
+}
+
+export default async function StudentRecordsPage({
+  searchParams,
+}: StudentRecordsPageProps) {
   const apiClient = await createClient()
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+  const studentSearch = resolvedSearchParams?.student_id?.trim() ?? ""
   const {
     data: { user },
   } = await apiClient.auth.getUser()
@@ -19,7 +27,7 @@ export default async function StudentRecordsPage() {
         {
           p_limit: 8,
           p_offset: 0,
-          p_search: null,
+          p_search: studentSearch || null,
           p_issue_category: "all",
           p_outcome: "all",
         }
@@ -59,6 +67,7 @@ export default async function StudentRecordsPage() {
       initialInterventions={initialInterventions}
       initialTotalCount={rows[0]?.total_count ?? 0}
       initialStudentOptions={initialStudentOptions}
+      initialSearch={studentSearch}
     />
   )
 }

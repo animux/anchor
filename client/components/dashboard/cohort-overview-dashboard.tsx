@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useCallback, useMemo, useState } from "react"
 import {
   AlertTriangleIcon,
@@ -26,6 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { createClient } from "@/lib/api/client"
+import { getStudentProfilePath } from "@/lib/students/profile-path"
 import { cn } from "@/lib/utils"
 import { getRagLabel } from "@/lib/submissions/operations"
 import type {
@@ -134,6 +136,7 @@ export function CohortOverviewDashboard({
   initialSummary,
   initialGroups,
 }: CohortOverviewDashboardProps) {
+  const router = useRouter()
   const apiClient = useMemo(() => createClient(), [])
 
   const [students, setStudents] = useState(initialStudents)
@@ -407,6 +410,20 @@ export function CohortOverviewDashboard({
     },
   ]
 
+  function openStudentProfile(
+    event:
+      | React.MouseEvent<HTMLTableRowElement>
+      | React.KeyboardEvent<HTMLTableRowElement>,
+    studentId: string
+  ) {
+    const target = event.target as HTMLElement
+    if (target.closest("a,button,input,select,textarea,[role='button']")) {
+      return
+    }
+
+    router.push(getStudentProfilePath(studentId))
+  }
+
   return (
     <div className="px-4 py-5 sm:px-7 sm:py-6">
       <div className="dashboard-fade-up relative overflow-hidden rounded-3xl border border-border/70 bg-linear-to-br from-background via-background to-primary/8 p-5 shadow-[0_22px_80px_-42px_var(--primary)] sm:p-7">
@@ -424,7 +441,7 @@ export function CohortOverviewDashboard({
         />
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-0 [background-image:radial-gradient(circle_at_top_right,var(--color-border)_1px,transparent_1px)] [background-size:18px_18px] opacity-60"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--color-border)_1px,transparent_1px)] bg-size-[18px_18px] opacity-60"
         />
 
         <header className="relative z-10 flex flex-wrap items-start justify-between gap-4">
@@ -494,7 +511,7 @@ export function CohortOverviewDashboard({
         </section>
       </div>
 
-      <section className="dashboard-fade-up dashboard-delay-2 mt-5 overflow-hidden rounded-3xl border border-border/70 bg-linear-to-b from-background via-background to-muted/[0.22]">
+      <section className="dashboard-fade-up dashboard-delay-2 mt-5 overflow-hidden rounded-3xl border border-border/70 bg-linear-to-b from-background via-background to-muted/22">
         <div className="border-b border-border/70 bg-muted/20 px-4 py-4 sm:px-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -566,19 +583,19 @@ export function CohortOverviewDashboard({
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/25 hover:bg-muted/25">
-                <TableHead className="text-xs tracking-[0.1em] text-muted-foreground uppercase">
+                <TableHead className="text-xs tracking-widest text-muted-foreground uppercase">
                   Student
                 </TableHead>
-                <TableHead className="text-xs tracking-[0.1em] text-muted-foreground uppercase">
+                <TableHead className="text-xs tracking-widest text-muted-foreground uppercase">
                   Group / cohort
                 </TableHead>
-                <TableHead className="text-xs tracking-[0.1em] text-muted-foreground uppercase">
+                <TableHead className="text-xs tracking-widest text-muted-foreground uppercase">
                   Submission signal
                 </TableHead>
-                <TableHead className="text-xs tracking-[0.1em] text-muted-foreground uppercase">
+                <TableHead className="text-xs tracking-widest text-muted-foreground uppercase">
                   Engagement signal
                 </TableHead>
-                <TableHead className="text-xs tracking-[0.1em] text-muted-foreground uppercase">
+                <TableHead className="text-xs tracking-widest text-muted-foreground uppercase">
                   Overall RAG
                 </TableHead>
               </TableRow>
@@ -610,10 +627,21 @@ export function CohortOverviewDashboard({
                 students.map((student) => (
                   <TableRow
                     key={student.id}
+                    role="button"
+                    tabIndex={0}
                     className={cn(
-                      "dashboard-fade-up border-b border-border/60 transition-all",
+                      "dashboard-fade-up cursor-pointer border-b border-border/60 transition-all",
                       getRowToneClass(student.overall_rag)
                     )}
+                    onClick={(event) =>
+                      openStudentProfile(event, student.student_id)
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault()
+                        openStudentProfile(event, student.student_id)
+                      }
+                    }}
                   >
                     <TableCell className="align-top">
                       <div className="flex items-start gap-3">
@@ -624,11 +652,19 @@ export function CohortOverviewDashboard({
                           )}
                         </span>
                         <div>
-                          <p className="font-semibold">
+                          <Link
+                            href={getStudentProfilePath(student.student_id)}
+                            className="font-semibold underline-offset-4 hover:underline"
+                          >
                             {student.full_name ?? student.student_id}
-                          </p>
+                          </Link>
                           <p className="text-xs text-muted-foreground">
-                            {student.student_id}
+                            <Link
+                              href={getStudentProfilePath(student.student_id)}
+                              className="underline-offset-4 hover:underline"
+                            >
+                              {student.student_id}
+                            </Link>
                           </p>
                         </div>
                       </div>
