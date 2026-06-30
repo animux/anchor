@@ -18,6 +18,12 @@ type RpcResponse<T> = {
 }
 
 function mapError(error: unknown): { message: string; code?: string } {
+  return {
+    message: error instanceof Error ? error.message : "Unexpected error",
+  }
+}
+
+function mapSessionError(error: unknown): { message: string; code?: string } {
   if (error instanceof BackendRequestError && error.status === 401) {
     return {
       message: "Session expired. Please sign in again.",
@@ -25,9 +31,7 @@ function mapError(error: unknown): { message: string; code?: string } {
     }
   }
 
-  return {
-    message: error instanceof Error ? error.message : "Unexpected error",
-  }
+  return mapError(error)
 }
 
 async function runRpc(name: string, args: Record<string, unknown> = {}) {
@@ -258,7 +262,7 @@ async function runRpc(name: string, args: Record<string, unknown> = {}) {
 
     return {
       data: null,
-      error: mapError(error),
+      error: mapSessionError(error),
     }
   }
 }

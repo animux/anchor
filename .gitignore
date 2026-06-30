@@ -6,3 +6,5 @@
 /client/.next/
 /client/out/
 /client/dist/
+.env.local
+.env
